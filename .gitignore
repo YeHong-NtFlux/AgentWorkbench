@@ -1,0 +1,16 @@
+﻿.venv/
+models/
+snapshots/
+data/
+logs/
+sandbox/tmp/
+.env
+.env.bak*
+*.bak
+_trash_*/
+__pycache__/
+*.pyc
+
+*.key
+data/outputs/
+data/snapshots/

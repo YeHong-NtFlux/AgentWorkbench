@@ -1,0 +1,34 @@
+﻿<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>本地 Agent工作台· MVP</title><style>
+body{font-family:"Microsoft YaHei","Noto Sans CJK SC",sans-serif;background:#0f1115;color:#e6edf3;
+margin:0;padding:28px;max-width:820px;margin:auto}
+h1{font-size:20px;color:#b6f000;border-left:8px solid #b6f000;padding-left:12px}
+.badge{background:#2563ff;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px}
+textarea{width:100%;height:100px;background:#1e2433;color:#e6edf3;border:1px solid #444;
+border-radius:8px;padding:10px;font-size:14px}
+button{background:#b6f000;color:#0a0a0a;border:0;border-radius:6px;padding:9px 22px;
+font-weight:800;cursor:pointer;margin-top:8px}
+pre{background:#1e2433;padding:14px;border-radius:8px;white-space:pre-wrap;font-size:13px}
+.tip{color:#8b949e;font-size:12px;line-height:1.7}
+</style></head><body>
+<h1>本地 Agent工作台·MVP控制台</h1>
+<p><span class="badge">全部数据留在本机</span><span class="badge">127.0.0.1专属</span></p>
+<p class="tip" id="status">正在读取状态...</p>
+<textarea id="q" placeholder="例如:读取 config/config.yaml并列出顶层键"></textarea><br>
+<button onclick="send()">发送给本地Agent</button>
+<pre id="out">等待输入...</pre>
+<p class="tip">写文件、执行脚本等高风险工具在网页模式下被拦截，请在命令行控制台(run.bat)里完成人工审批。
+正式自研C++工作台见部署手册第8章。</p>
+<script>
+fetch("/api/status").then(r=>r.json()).then(d=>{
+    document.getElementById("status").textContent=
+    "本地模型:"+d.model+" | 可用工具:"+d.tools.join("、")+" | "+d.note;
+});
+function send(){
+    const q=document.getElementById("q").value;
+    document.getElementById("out").textContent="思考中...";
+    fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({message:q})})
+    .then(r=>r.json()).then(d=>document.getElementById("out").textContent=d.reply)
+    .catch(e=>document.getElementById("out").textContent="请求失败:"+e);
+}
+</script></body></html>

@@ -1,0 +1,26 @@
+home: 'W:/AgentWorkbench'
+ollama:
+  host: 'http://127.0.0.1:11434'
+  local_model: 'qwen2.5:14b'
+  embed_model: 'nomic-embed-text'
+  num_ctx: 8192
+  num_gpu: 99
+cloud:
+  enabled: true
+  openai_base: 'https://api.openai.com/v1'
+  openai_model: 'gpt-4o'
+  deepseek_base: 'https://api.deepseek.com/v1'
+  deepseek_model: 'deepseek-flash'
+  kimi_base: 'https://api.moonshot.cn/v1'
+  kimi_model: 'kimi-k3.1-pro'
+  kimi_max_tokens: 4096
+router:
+  force_local_privacy: ['private', 'secret']
+  cloud_tasks: ['complex_code', 'math_proof', 'finance', 'legal', 'long_writing']
+  kimi_tasks: ['finance', 'legal']
+approval:
+  require_for: ['write_file', 'run_python', 'delete_file', 'send_message', 'git_commit', 'git_push']
+limits:
+  max_tool_rounds: 8
+  script_timeout_seconds: 30
+  max_output_chars: 8000
