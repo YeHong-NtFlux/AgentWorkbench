@@ -1,34 +1,97 @@
-﻿<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>本地 Agent工作台· MVP</title><style>
-body{font-family:"Microsoft YaHei","Noto Sans CJK SC",sans-serif;background:#0f1115;color:#e6edf3;
-margin:0;padding:28px;max-width:820px;margin:auto}
-h1{font-size:20px;color:#b6f000;border-left:8px solid #b6f000;padding-left:12px}
-.badge{background:#2563ff;color:#fff;padding:3px 10px;border-radius:4px;font-size:12px}
-textarea{width:100%;height:100px;background:#1e2433;color:#e6edf3;border:1px solid #444;
-border-radius:8px;padding:10px;font-size:14px}
-button{background:#b6f000;color:#0a0a0a;border:0;border-radius:6px;padding:9px 22px;
-font-weight:800;cursor:pointer;margin-top:8px}
-pre{background:#1e2433;padding:14px;border-radius:8px;white-space:pre-wrap;font-size:13px}
-.tip{color:#8b949e;font-size:12px;line-height:1.7}
-</style></head><body>
-<h1>本地 Agent工作台·MVP控制台</h1>
-<p><span class="badge">全部数据留在本机</span><span class="badge">127.0.0.1专属</span></p>
-<p class="tip" id="status">正在读取状态...</p>
-<textarea id="q" placeholder="例如:读取 config/config.yaml并列出顶层键"></textarea><br>
-<button onclick="send()">发送给本地Agent</button>
-<pre id="out">等待输入...</pre>
-<p class="tip">写文件、执行脚本等高风险工具在网页模式下被拦截，请在命令行控制台(run.bat)里完成人工审批。
-正式自研C++工作台见部署手册第8章。</p>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentWorkbench · 本地智能体工作台</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;--text:#e6edf3;--text-dim:#8b949e;--text-faint:#484f58;--accent:#58a6ff;--accent-hover:#4493e0;--accent-bg:rgba(56,139,253,.12);--green:#3fb950;--green-bg:rgba(63,185,80,.12);--orange:#d29922;--orange-bg:rgba(210,153,34,.1);--purple:#a371f7;--red:#f85149;--radius:12px;--radius-sm:8px;--mono:'Cascadia Code','Fira Code','JetBrains Mono','Consolas',monospace}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.header-left{display:flex;align-items:center;gap:12px}
+.logo{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#fff;box-shadow:0 2px 12px rgba(88,166,255,.25)}
+.header h1{font-size:15px;font-weight:600;letter-spacing:-.2px}.header h1 small{color:var(--text-dim);font-weight:400;font-size:12px;margin-left:6px}
+.badges{display:flex;gap:6px}.badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500}
+.badge.local{background:var(--green-bg);color:var(--green);border:1px solid rgba(63,185,80,.25)}
+.badge.addr{background:var(--accent-bg);color:var(--accent);border:1px solid rgba(88,166,255,.25)}
+.status-bar{display:flex;gap:20px;align-items:center;padding:6px 24px;border-bottom:1px solid var(--border);background:var(--bg);font-size:11px;color:var(--text-dim);flex-shrink:0}
+.status-bar .pulse{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:5px;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
+.chat-area{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:14px}
+.chat-area::-webkit-scrollbar{width:5px}.chat-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}.chat-area::-webkit-scrollbar-track{background:transparent}
+.welcome{text-align:center;padding:40px 20px 20px;color:var(--text-faint)}
+.welcome .logo-big{width:64px;height:64px;margin:0 auto 16px;background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;box-shadow:0 4px 24px rgba(88,166,255,.2)}
+.welcome h2{font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px}.welcome p{font-size:13px;line-height:1.8;max-width:420px;margin:0 auto}
+.welcome .suggestions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:20px}
+.suggestion{padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:12px;color:var(--text-dim);cursor:pointer;transition:all .15s}
+.suggestion:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+.msg{max-width:86%;padding:11px 15px;border-radius:var(--radius);line-height:1.75;font-size:14px;word-break:break-word;animation:msgIn .2s ease-out}
+@keyframes msgIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.msg.agent{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:4px;white-space:pre-wrap}
+.msg.agent code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-size:12.5px;color:#e6edf3}
+.msg.agent .tool-call{display:inline-flex;align-items:center;gap:6px;background:var(--orange-bg);border:1px solid rgba(210,153,34,.25);border-radius:6px;padding:4px 10px;margin:6px 0;font-size:12px;font-family:var(--mono);color:var(--orange)}
+.msg.agent .tool-call .tc-icon{font-size:13px}
+.msg.system{align-self:center;max-width:90%;background:transparent;border:1px dashed var(--border);color:var(--text-dim);font-size:12px;text-align:center;padding:6px 12px;border-radius:8px}
+.cursor::after{content:'▊';color:var(--accent);animation:blink 1s step-end infinite;margin-left:1px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.thinking{align-self:flex-start;display:flex;align-items:center;gap:10px;padding:10px 16px;color:var(--text-dim);font-size:13px}
+.thinking .spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.input-area{padding:14px 24px 16px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.input-wrap{display:flex;gap:10px;align-items:flex-end;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;transition:border-color .2s}
+.input-wrap:focus-within{border-color:var(--accent)}
+textarea{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:14px;line-height:1.5;resize:none;max-height:160px;font-family:inherit}
+textarea::placeholder{color:var(--text-faint)}
+.send-btn{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;flex-shrink:0}
+.send-btn:hover{background:var(--accent-hover);transform:translateY(-1px)}
+.send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.send-btn .stop-icon{display:none}.send-btn.stopping .send-text{display:none}.send-btn.stopping .stop-icon{display:inline}
+.hint{text-align:center;font-size:11px;color:var(--text-faint);padding:8px 0 0;line-height:1.6}
+.hint code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-size:10.5px;color:var(--text-dim)}
+.modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}
+.modal-mask.show{display:flex;animation:fadeIn .15s ease-out}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:520px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal h3{font-size:15px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.modal .modal-body{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:16px;font-family:var(--mono);font-size:12.5px;line-height:1.7;max-height:200px;overflow-y:auto;white-space:pre-wrap;color:var(--text-dim)}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end}
+.btn{padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border);transition:all .15s}
+.btn-cancel{background:transparent;color:var(--text-dim)}.btn-cancel:hover{background:var(--surface2);color:var(--text)}
+.btn-confirm{background:var(--green);color:#fff;border-color:var(--green)}.btn-confirm:hover{background:#36a84a}
+.btn-danger{background:var(--red);color:#fff;border-color:var(--red)}.btn-danger:hover{background:#e03e36}
+</style>
+</head>
+<body>
+<div class="header"><div class="header-left"><div class="logo">A</div><h1>AgentWorkbench <small>本地智能体工作台</small></h1></div><div class="badges"><span class="badge local">● 数据留在本机</span><span class="badge addr">127.0.0.1 专属</span></div></div>
+<div class="status-bar"><span><span class="pulse"></span><span id="st-model">连接中…</span></span><span id="st-tools"></span><span id="st-note"></span></div>
+<div class="chat-area" id="chat"><div class="welcome" id="welcome"><div class="logo-big">A</div><h2>AgentWorkbench</h2><p>本地智能体工作台 · 数据不出本机 · 混合路由调度</p><div class="suggestions"><div class="suggestion" onclick="fillQ(this)">读取 config/config.yaml 并列出顶层键</div><div class="suggestion" onclick="fillQ(this)">帮我整理 sandbox/ 目录下有哪些脚本</div><div class="suggestion" onclick="fillQ(this)">用中文解释一下什么是 Function Calling</div></div></div></div>
+<div class="input-area"><div class="input-wrap"><textarea id="q" rows="1" placeholder="给 Agent 发送指令… (Enter 发送, Shift+Enter 换行)" oninput="autoGrow(this)"></textarea><button class="send-btn" id="sendBtn" onclick="toggleSend()"><span class="send-text">发送</span><span class="stop-icon">■ 停止</span></button></div><p class="hint">🔒 高风险工具在网页模式下被拦截 · 请在 <code>run.bat</code> 控制台完成人工审批 · 正式 C++ 工作台见部署手册第 8 章</p></div>
+<div class="modal-mask" id="modal"><div class="modal"><h3>⚠ 操作审批请求</h3><div class="modal-body" id="modal-body"></div><div class="modal-actions"><button class="btn btn-cancel" onclick="rejectAction()">拒绝</button><button class="btn btn-confirm" onclick="approveAction()">✓ 批准执行</button></div></div></div>
 <script>
-fetch("/api/status").then(r=>r.json()).then(d=>{
-    document.getElementById("status").textContent=
-    "本地模型:"+d.model+" | 可用工具:"+d.tools.join("、")+" | "+d.note;
-});
-function send(){
-    const q=document.getElementById("q").value;
-    document.getElementById("out").textContent="思考中...";
-    fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({message:q})})
-    .then(r=>r.json()).then(d=>document.getElementById("out").textContent=d.reply)
-    .catch(e=>document.getElementById("out").textContent="请求失败:"+e);
-}
-</script></body></html>
+let abortCtrl=null,currentAgentEl=null,streamBuffer='';
+fetch('/api/status').then(r=>r.json()).then(d=>{document.getElementById('st-model').textContent=d.model||'模型未就绪';document.getElementById('st-tools').textContent=(d.tools||[]).length+' 个可用工具';document.getElementById('st-note').textContent=d.note||'';}).catch(()=>{document.getElementById('st-model').textContent='⚠ 无法连接后端（流式接口可能仍可用）';document.getElementById('st-tools').textContent='0 个可用工具';document.getElementById('st-note').textContent='';});
+function autoGrow(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,160)+'px';}
+document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();toggleSend();}});
+function fillQ(el){const ta=document.getElementById('q');ta.value=el.textContent.trim();ta.focus();autoGrow(ta);}
+function toggleSend(){if(abortCtrl){abort();return;}send();}
+function setSending(s){const b=document.getElementById('sendBtn');b.classList.toggle('stopping',s);b.disabled=false;abortCtrl=s?new AbortController():null;}
+function abort(){if(abortCtrl){abortCtrl.abort();abortCtrl=null;}setSending(false);if(currentAgentEl){currentAgentEl.classList.remove('cursor');currentAgentEl=null;}}
+function addUserMsg(t){hideWelcome();const el=document.createElement('div');el.className='msg user';el.textContent=t;document.getElementById('chat').appendChild(el);scrollBottom();}
+function addAgentMsg(){hideWelcome();const el=document.createElement('div');el.className='msg agent cursor';document.getElementById('chat').appendChild(el);scrollBottom();return el;}
+function addSystemMsg(t){hideWelcome();const el=document.createElement('div');el.className='msg system';el.textContent=t;document.getElementById('chat').appendChild(el);scrollBottom();return el;}
+function addThinking(){hideWelcome();const el=document.createElement('div');el.className='thinking';el.innerHTML='<div class="spinner"></div><span>Agent 规划中…</span>';document.getElementById('chat').appendChild(el);scrollBottom();return el;}
+function hideWelcome(){const w=document.getElementById('welcome');if(w){w.style.display='none';}}
+function scrollBottom(){const c=document.getElementById('chat');c.scrollTop=c.scrollHeight;}
+function parseSSELine(line){if(!line.startsWith('data: '))return null;const p=line.slice(6).trim();if(p==='[DONE]')return{type:'done'};try{return JSON.parse(p);}catch{return null;}}
+async function send(){const ta=document.getElementById('q');const text=ta.value.trim();if(!text)return;addUserMsg(text);ta.value='';ta.style.height='auto';setSending(true);const thinkEl=addThinking();currentAgentEl=addAgentMsg();let tokenAcc='';try{const resp=await fetch('/api/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text}),signal:abortCtrl.signal});if(!resp.ok){throw new Error('HTTP '+resp.status);}thinkEl.remove();const reader=resp.body.getReader();const decoder=new TextDecoder();let buf='';while(true){const {done,value}=await reader.read();if(done)break;buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop();for(const line of lines){const ev=parseSSELine(line.trim());if(!ev)continue;switch(ev.type||ev.t){case 'token':case 'tok':tokenAcc+=(ev.content||ev.c||'');currentAgentEl.textContent=tokenAcc;currentAgentEl.classList.add('cursor');scrollBottom();break;case 'tool_call':case 'tool':tokenAcc+='\n';const tc=document.createElement('span');tc.className='tool-call';tc.innerHTML='<span class="tc-icon">🔧</span> '+(ev.name||ev.n)+' → '+JSON.stringify(ev.args||ev.a||{}).slice(0,80);currentAgentEl.appendChild(tc);tokenAcc+='\n';break;case 'approval':case 'approve':showApproval(ev);break;case 'approval_result':addSystemMsg(ev.approved?'✓ 审批已通过，继续执行':'✗ 审批已拒绝，操作未执行');break;case 'route':if(ev.model)addSystemMsg('路由 → '+(ev.provider||'local')+' / '+(ev.model||''));break;case 'done':case 'end':reader.cancel();break;}}}catch(err){if(err.name==='AbortError'){tokenAcc+='\n\n[已停止]';}else{if(thinkEl)thinkEl.remove();tokenAcc=(tokenAcc?tokenAcc+'\n':'')+'⚠ 连接失败: '+err.message;}if(currentAgentEl)currentAgentEl.textContent=tokenAcc;}finally{if(currentAgentEl)currentAgentEl.classList.remove('cursor');currentAgentEl=null;setSending(false);scrollBottom();}}
+let pendingApproval=null;
+function showApproval(d){pendingApproval=d;document.getElementById('modal-body').textContent='操作: '+(d.action||d.tool||'unknown')+'\n参数:\n'+JSON.stringify(d.args||d.params||{},null,2);document.getElementById('modal').classList.add('show');}
+function closeModal(){document.getElementById('modal').classList.remove('show');pendingApproval=null;}
+function sendApproval(ok){if(pendingApproval){fetch('/api/approval/respond',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({approved:ok,id:pendingApproval.id||pendingApproval.request_id})}).then(()=>{addSystemMsg(ok?'✓ 已批准：'+(pendingApproval.tool||pendingApproval.action||'操作'):'✗ 已拒绝：'+(pendingApproval.tool||pendingApproval.action||'操作'));}).catch(()=>{addSystemMsg('⚠ 审批回执发送失败，请检查后端连接');});}closeModal();}
+function approveAction(){sendApproval(true);}
+function rejectAction(){sendApproval(false);}
+</script>
+</body>
+</html>

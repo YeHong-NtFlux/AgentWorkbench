@@ -1,4 +1,4 @@
-﻿
+
 import os
 _MODELS_PATH_CHECK = os.environ.get("OLLAMA_MODELS", "")
 _EXPECTED = r"W:\AgentWorkbench\models"
@@ -22,8 +22,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 
 from src import core, tools, router
+from src.api.sse_chat import register as _register_sse
 
 app = FastAPI(title="Local Agent Workbench MVP")
+_register_sse(app)  # 挂载 /api/chat/stream 与 /api/approval/respond
 
 
 @app.get("/")
